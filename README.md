@@ -47,29 +47,56 @@ A processor that reads .png sprite sheets and a complementary "sprites slices de
 
 ### Quick usage:
 
-minimal parameters
+- Place rescomp_ext.jar in your project's res root to enable the processor.
+
+- in your .res file:
+
+```
+# minimal parameters
 
 SLICED_SPRITE name "file" width height [compression [time [collision [opt_type [opt_level [opt_duplicate ["sprites_def"]]]]]]]
 
-or up to full parameters:
+# or up to full parameters:
 
 SLICED_SPRITE name "file" width height ["sprites_def"]
+
+```
 
 ### Key behavior: flexible sprites_def placement
 - The processor recognizes the sprites definition file by its extension (.txt or .png) anywhere after the height (fields[4]).
 - You can provide the same optional parameters as SPRITE before or after it; the processor will detect which field is the sprites_def and ignore it when parsing the other optional parameters.
 
-- name: resource variable name
-- file: image file to convert (BMP or PNG)
-- width: width of a single frame (in tiles)
-- height: height of a single frame (in tiles)
-- compression: -1/BEST/AUTO, 0/NONE (default), 1/APLIB, 2/FAST/LZ4W
-- time: frame display times (single or 2D array)
-- collision: CIRCLE, BOX or NONE
-- opt_type: 0/BALANCED (default), 1/SPRITE, 2/TILE, 3/NONE
-- opt_level: FAST (default), MEDIUM, SLOW, MAX
-- opt_duplicate: TRUE / FALSE (optimize duplicate consecutive frames)
-- sprites_def: .txt or .png file with per-animation/frame definitions
+```
+name          Sprite variable name
+
+width         width of a single sprite frame in tile
+
+height        height of a single sprite frame in tile
+
+compression   compression type, accepted values:
+                -1 / BEST / AUTO = use best compression
+                0 / NONE        = no compression (default)
+                1 / APLIB       = aplib library (good compression ratio but slow)
+                2 / FAST / LZ4W = custom lz4 compression (average compression ratio but fast)
+
+time          display frame time in 1/60 of second (time between each animation frame)
+                If this value is set to 0 (default) then auto animation is disabled
+                It can be set globally (single value) or independently for each frame of each animation
+                Example for a sprite sheet of 3 animations x 5 frames:
+                [[3,3,3,4,4][4,5,5][2,3,3,4]]
+                As you can see you can have empty value for empty frame
+
+collision     collision type: CIRCLE, BOX or NONE (NONE by default)
+
+opt_duplicate enabled optimization of consecutive duplicated frames by removing them and increasing animation time to compensate.
+                FALSE     = no optimization (default)
+                            Note that duplicated frames pixel data are still removed by rescomp binary blob optimizer
+                TRUE      = only the first instance of consecutive duplicated frames is kept and 'timer' value is increased to compensate the removed frames time.
+                Note that it *does* change the 'animation.numFrame' information so beware of that when enabling this optimization.
+
+sprites_def:    .txt or .png file with per-animation/frame definitions
+
+```
 
 ### Example valid invocations:
   - Minimal (no definitions): SLICED_SPRITE mySprite "sheet.png" 2 3
@@ -100,48 +127,3 @@ Examples
 
 
 
-
-
-
-
-
-# RESCOMP EXTENSION USAGE:
-copy rescomp_ext.jar in your \res root folder
-
-in your res file:
-
-    SLICED_SPRITE name width height [compression [time [collision [opt_type [opt_level [opt_duplicate [\"file\"]]]]]]]
-
-        !NOTE: as long as \"file\" is the last parameter, you can omit any of the previous optional ones to use simpler declarations
-
-    name          Sprite variable name
-
-    sprites_def   file containing sprite definitions per animation and frame
-
-    width         width of a single sprite frame in tile
-
-    height        height of a single sprite frame in tile
-
-    compression   compression type, accepted values:
-                    -1 / BEST / AUTO = use best compression
-                    0 / NONE        = no compression (default)
-                    1 / APLIB       = aplib library (good compression ratio but slow)
-                    2 / FAST / LZ4W = custom lz4 compression (average compression ratio but fast)
-
-    time          display frame time in 1/60 of second (time between each animation frame)
-                    If this value is set to 0 (default) then auto animation is disabled
-                    It can be set globally (single value) or independently for each frame of each animation
-                    Example for a sprite sheet of 3 animations x 5 frames:
-                    [[3,3,3,4,4][4,5,5][2,3,3,4]]
-                    As you can see you can have empty value for empty frame
-
-    collision     collision type: CIRCLE, BOX or NONE (NONE by default)
-
-    opt_duplicate enabled optimization of consecutive duplicated frames by removing them and increasing animation time to compensate.
-                    FALSE     = no optimization (default)
-                                Note that duplicated frames pixel data are still removed by rescomp binary blob optimizer
-                    TRUE      = only the first instance of consecutive duplicated frames is kept and 'timer' value is increased to compensate the removed frames time.
-                    Note that it *does* change the 'animation.numFrame' information so beware of that when enabling this optimization.
-
-    file*          the image file to convert to SpriteDefinition structure (BMP or PNG image)
-                   * as long as this is the last parameter, you can omit any of the previous optional ones
