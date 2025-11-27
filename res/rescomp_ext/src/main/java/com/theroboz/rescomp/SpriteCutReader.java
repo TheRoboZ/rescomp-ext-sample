@@ -193,8 +193,8 @@ public class SpriteCutReader
         {
             final int x = Integer.parseInt(parts[0]);
             final int y = Integer.parseInt(parts[1]);
-            final int width = Integer.parseInt(parts[2])-x+1;
-            final int height = Integer.parseInt(parts[3])-y+1;
+            final int width = Integer.parseInt(parts[2]);
+            final int height = Integer.parseInt(parts[3]);
 
             if ((width==8 || width==16 || width==24 || width==32)
                 && (height==8 || height==16 || height==24 || height==32))
