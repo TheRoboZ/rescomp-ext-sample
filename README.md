@@ -18,6 +18,7 @@ A processor that reads .png sprite sheets and a complementary "sprites slices de
     FRAME m
     x y width height
     ...
+    # coordinates are relative inside the frame's boundaries
 
   - Example:
     [ANIMATION 0]
