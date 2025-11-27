@@ -13,11 +13,12 @@ import java.util.Set;
 import sgdk.rescomp.Compiler;
 import sgdk.rescomp.Resource;
 import sgdk.rescomp.resource.Bin;
-
 import sgdk.rescomp.tool.Util;
 import sgdk.rescomp.type.Basics.CollisionType;
 import sgdk.rescomp.type.Basics.Compression;
 import sgdk.rescomp.type.SpriteCell;
+import sgdk.rescomp.type.SpriteCell.OptimizationLevel;
+import sgdk.rescomp.type.SpriteCell.OptimizationType;
 import sgdk.tool.ImageUtil;
 
 public class SpriteCutAnimation extends Resource
@@ -37,10 +38,13 @@ public class SpriteCutAnimation extends Resource
      *        width of frame in tile
      * @param hf
      *        height of frame in tile
+     * @param showCuttingResult
+     *
      * @param frameDefinitions
      *        List of SpriteFrameDefinition from file
      */
-    public SpriteCutAnimation(String id, byte[] image8bpp, int w, int h, int animIndex, int wf, int hf, int[] time, CollisionType collision, Compression compression, List<SpriteFrameDefinition> frameDefinitions, boolean optDuplicate)
+    public SpriteCutAnimation(String id, byte[] image8bpp, int w, int h, int animIndex, int wf, int hf, int[] time, CollisionType collision, Compression compression,
+        OptimizationType optType, OptimizationLevel optLevel, boolean optDuplicate, List<SpriteFrameDefinition> frameDefinitions)
     {
         super(id);
 
@@ -102,11 +106,11 @@ public class SpriteCutAnimation extends Resource
             if (frame != null)
             {
             	// create sprite frame ('timer' is augmented by number of duplicate) and re-use previous sprite cutting
-            	frame = new SpriteCutFrame(id + "_frame" + i, frameImage, wf, hf, time[Math.min(time.length - 1, i)] * (duplicate + 1), collision, compression, frame.getSprites());
+            	frame = new SpriteCutFrame(id + "_frame" + i, frameImage, wf, hf, time[Math.min(time.length - 1, i)] * (duplicate + 1), collision, compression, optType, optLevel, frame.getSprites());
             }
             else
             {
-                    // Get sprite definitions for this frame from file
+                // Get sprite definitions for this frame from file
                 List<SpriteCell> sprites = new ArrayList<>();
 
                 if (i < frameDefinitions.size())
@@ -124,12 +128,12 @@ public class SpriteCutAnimation extends Resource
                             + " sprites, max is 16");
                 else if (sprites.size() > 0)
                     // Create sprite frame using file-defined sprites
-                    frame = new SpriteCutFrame(id + "_frame" + i, frameImage, wf, hf, time[Math.min(time.length - 1, i)] * (duplicate + 1), collision, compression, sprites);
+                    frame = new SpriteCutFrame(id + "_frame" + i, frameImage, wf, hf, time[Math.min(time.length - 1, i)] * (duplicate + 1), collision, compression, optType, optLevel, sprites);
                 else
                 {
-                    //@TODO: process frame normally
+                    System.out.println("Sprite animation '"+id+"'' Frame "+i+" has no user-defined Cuts. Using SGDK automatic processing");
                     // create sprite frame ('timer' is augmented by number of duplicate)
-            	    frame = new SpriteCutFrame(id + "_frame" + i, frameImage, wf, hf, time[Math.min(time.length - 1, i)] * (duplicate + 1), collision, compression);
+            	    frame = new SpriteCutFrame(id + "_frame" + i, frameImage, wf, hf, time[Math.min(time.length - 1, i)] * (duplicate + 1), collision, compression, optType, optLevel);
                 }
             }
 

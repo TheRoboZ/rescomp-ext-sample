@@ -8,239 +8,323 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+
 import sgdk.rescomp.Resource;
 import sgdk.rescomp.resource.Bin;
 import sgdk.rescomp.resource.Tileset;
-import sgdk.rescomp.resource.internal.Collision;
-
 import sgdk.rescomp.tool.SpriteCutter;
 import sgdk.rescomp.tool.Util;
 import sgdk.rescomp.type.Basics;
-import sgdk.rescomp.type.SpriteCell;
+import sgdk.rescomp.resource.internal.Collision;
+import sgdk.rescomp.resource.internal.VDPSprite;
 import sgdk.rescomp.type.Basics.CollisionType;
+import sgdk.rescomp.type.SpriteCell;
 import sgdk.rescomp.type.SpriteCell.OptimizationLevel;
 import sgdk.rescomp.type.SpriteCell.OptimizationType;
 import sgdk.tool.ImageUtil;
 
-public class SpriteCutFrame extends Resource {
+public class SpriteCutFrame extends Resource
+{
    public final List<VDPSpriteCut> vdpSprites;
    public final Collision collision;
    public final Tileset tileset;
    public final int timer;
+
    final int hc;
+
+    // just for pre-equal test
    final byte[] frameImage;
    final Dimension frameDim;
    final Basics.CollisionType collisionType;
    final Basics.Compression compression;
    final int fhc;
 
-   public SpriteCutFrame(String id, byte[] frameImage8bpp, int wf, int hf, int timer, Basics.CollisionType collisionType, Basics.Compression compression, List<SpriteCell> sprites) {
+   public SpriteCutFrame(String id, byte[] frameImage8bpp, int wf, int hf, int timer, Basics.CollisionType collisionType, Basics.Compression compression, SpriteCell.OptimizationType optType, SpriteCell.OptimizationLevel optLevel, List<SpriteCell> sprites)
+   {
       super(id);
-      this.vdpSprites = new ArrayList();
+
+      vdpSprites = new ArrayList<>();
       this.timer = timer;
       this.collisionType = collisionType;
       this.compression = compression;
       this.frameImage = frameImage8bpp;
       this.frameDim = new Dimension(wf * 8, hf * 8);
-      this.fhc = computeFastHashcode(frameImage8bpp, this.frameDim, timer, collisionType, compression);
-      if (sprites.isEmpty()) {
-         System.out.println("SpriteCut '" + id + "' is empty");
-         this.tileset = (Tileset)addInternalResource(new Tileset(id + "_tileset", false));
-      } else {
+      this.fhc = computeFastHashcode(frameImage8bpp, frameDim, timer, collisionType, compression);
+
+      // empty frame --> empty tileset
+      if (sprites.isEmpty())
+      {
+         // shot info about this sprite frame
+         System.out.println("SpriteCut frame'" + id + "' is empty");
+
+         tileset = (Tileset) addInternalResource(new Tileset(id + "_tileset", false));
+      }
+      else
+      {
          int optNumTile = 0;
+         for (SpriteCell spr : sprites)
+            optNumTile += spr.numTile;
 
-         SpriteCell spr;
-         for(Iterator var11 = sprites.iterator(); var11.hasNext(); optNumTile += spr.numTile) {
-            spr = (SpriteCell)var11.next();
-         }
-
+         // shot info about this sprite frame
          System.out.println("Sprite frame '" + id + "' - " + sprites.size() + " VDP sprites and " + optNumTile + " tiles");
-         this.tileset = (Tileset)addInternalResource(new Tileset(id + "_tileset", this.frameImage, wf * 8, hf * 8, sprites, compression, false));
+
+         // build tileset
+         tileset = (Tileset) addInternalResource(new Tileset(id + "_tileset", frameImage, wf * 8, hf * 8, sprites, compression, false));
       }
 
-      Collision coll;
-      if (collisionType == CollisionType.NONE) {
+      final Collision coll;
+
+      // define collision
+      if (collisionType == CollisionType.NONE)
+      {
          coll = null;
-      } else {
+      }
+      else
+      {
          Basics.CollisionBase c = null;
-         switch (collisionType) {
-            case CIRCLE:
-               c = new Basics.Circle(wf * 8 / 2, hf * 8 / 2, wf * 8 * 3 / 8);
-               break;
-            case BOX:
-               c = new Basics.Box(wf * 8 * 1 / 4, hf * 8 * 1 / 4, wf * 8 * 3 / 4, hf * 8 * 3 / 4);
+         switch (collisionType)
+         {
+               case BOX:
+                  // use 75% the size of the frame for the collision
+                  c = new Basics.Box(((wf * 8) * 1) / 4, ((hf * 8) * 1) / 4, ((wf * 8) * 3) / 4, ((hf * 8) * 3) / 4);
+                  break;
+               case CIRCLE:
+                  // use 75% the size of the frame for the collision
+                  c = new Basics.Circle((wf * 8) / 2, (hf * 8) / 2, ((wf * 8) * 3) / 8);
+                  break;
+
+               default:
+                  break;
          }
 
          coll = new Collision(id + "_collision", (Basics.CollisionBase)c);
       }
 
-      if (coll != null) {
-         this.collision = (Collision)addInternalResource(coll);
-      } else {
-         this.collision = null;
-      }
+      // need to check that as it can be null
+      if (coll != null)
+         collision = (Collision) addInternalResource(coll);
+      else
+         collision = null;
 
       int ind = 0;
-      Iterator var12 = sprites.iterator();
+      for (SpriteCell sprite : sprites)
+         vdpSprites.add(new VDPSpriteCut(id + "_sprite" + ind++, sprite, wf, hf));
 
-      while(var12.hasNext()) {
-         SpriteCell sprite = (SpriteCell)var12.next();
-         this.vdpSprites.add(new VDPSpriteCut(id + "_sprite" + ind++, sprite, wf, hf));
-      }
-
-      this.hc = timer << 16 ^ (this.tileset != null ? this.tileset.hashCode() : 0) ^ this.vdpSprites.hashCode() ^ (this.collision != null ? this.collision.hashCode() : 0);
+      hc = (timer << 16) ^ ((tileset != null) ? tileset.hashCode() : 0) ^ vdpSprites.hashCode() ^ ((collision != null) ? collision.hashCode() : 0);
    }
 
-   public SpriteCutFrame(String id, byte[] frameImage8bpp, int wf, int hf, int timer, Basics.CollisionType collisionType, Basics.Compression compression, SpriteCell.OptimizationType optType, SpriteCell.OptimizationLevel optLevel) {
-      this(id, frameImage8bpp, wf, hf, timer, collisionType, compression, computeSpriteCutting(id, frameImage8bpp, wf, hf, optType, optLevel));
-   }
-
-   public SpriteCutFrame(String id, byte[] image8bpp, int w, int h, int frameIndex, int animIndex, int wf, int hf, int timer, Basics.CollisionType collisionType, Basics.Compression compression, SpriteCell.OptimizationType optType, SpriteCell.OptimizationLevel optLevel) {
-      this(id, ImageUtil.getSubImage(image8bpp, new Dimension(w * 8, h * 8), new Rectangle(frameIndex * wf * 8, animIndex * hf * 8, wf * 8, hf * 8)), wf, hf, timer, collisionType, compression, optType, optLevel);
-   }
-
-   public SpriteCutFrame(String id, byte[] image8bpp, int w, int h, int timer, Basics.CollisionType collision, Basics.Compression compression)
+   /**
+     * @param w
+     *        width of image in tile
+     * @param h
+     *        height of image in tile
+     * @param wf
+     *        width of frame in tile
+     * @param hf
+     *        height of frame in tile
+     * @param showCut
+     */
+   public SpriteCutFrame(String id, byte[] frameImage8bpp, int wf, int hf, int timer, Basics.CollisionType collisionType, Basics.Compression compression,
+      SpriteCell.OptimizationType optType, SpriteCell.OptimizationLevel optLevel)
    {
-      this(id, image8bpp, w, h, timer, collision, compression, computeSpriteCutting(id, image8bpp, w, h, OptimizationType.NONE, OptimizationLevel.MEDIUM));
+      this(id, frameImage8bpp, wf, hf, timer, collisionType, compression, optType, optLevel, computeSpriteCutting(id, frameImage8bpp, wf, hf, optType, optLevel));
    }
 
-   static List<SpriteCell> computeSpriteCutting(String id, byte[] frameImage8bpp, int wf, int hf, SpriteCell.OptimizationType optType, SpriteCell.OptimizationLevel optLevel) throws UnsupportedOperationException {
+    /**
+     * @param w
+     *        width of image in tile
+     * @param h
+     *        height of image in tile
+     * @param wf
+     *        width of frame in tile
+     * @param hf
+     *        height of frame in tile
+     */
+   public SpriteCutFrame(String id, byte[] image8bpp, int w, int h, int frameIndex, int animIndex, int wf, int hf, int timer, Basics.CollisionType collisionType,
+      Basics.Compression compression, SpriteCell.OptimizationType optType, SpriteCell.OptimizationLevel optLevel)
+   {
+      this(id, ImageUtil.getSubImage(image8bpp, new Dimension(w * 8, h * 8), new Rectangle((frameIndex * wf) * 8, (animIndex * hf) * 8, wf * 8, hf * 8)), wf,
+            hf, timer, collisionType, compression, optType, optLevel);
+   }
+
+   static List<SpriteCell> computeSpriteCutting(String id, byte[] frameImage8bpp, int wf, int hf, SpriteCell.OptimizationType optType, SpriteCell.OptimizationLevel optLevel) throws UnsupportedOperationException
+   {
+
+      List<SpriteCell> sprites;
       Dimension frameDim = new Dimension(wf * 8, hf * 8);
-      List sprites;
-      boolean empty;
-      if (optType == OptimizationType.NONE) {
+
+      if (optType == OptimizationType.NONE)
          sprites = SpriteCutter.getFastOptimizedSpriteList(frameImage8bpp, frameDim, OptimizationType.NONE, false);
-      } else if (optLevel != OptimizationLevel.SLOW && optLevel != OptimizationLevel.MAX) {
-         empty = optLevel == OptimizationLevel.MEDIUM;
-         sprites = SpriteCutter.getFastOptimizedSpriteList(frameImage8bpp, frameDim, optType, empty);
-         if (sprites.size() > 16 && optType != OptimizationType.MIN_SPRITE) {
-            sprites = SpriteCutter.getFastOptimizedSpriteList(frameImage8bpp, frameDim, OptimizationType.MIN_SPRITE, empty);
-         }
+      else
+      {
+         // slow optimization ?
+         if ((optLevel == OptimizationLevel.SLOW) || (optLevel == OptimizationLevel.MAX))
+         {
+               final int iteration = (optLevel == OptimizationLevel.SLOW) ? 500000 : 5000000;
 
-         if (sprites.size() > 16 && !empty) {
-            sprites = SpriteCutter.getFastOptimizedSpriteList(frameImage8bpp, frameDim, OptimizationType.MIN_SPRITE, true);
-         }
+               sprites = SpriteCutter.getSlowOptimizedSpriteList(frameImage8bpp, frameDim, iteration, optType);
 
-         if (sprites.size() > 16) {
-            sprites = SpriteCutter.getSlowOptimizedSpriteList(frameImage8bpp, frameDim, 100000L, OptimizationType.MIN_SPRITE);
+               // above the limit of internal sprite ? force MIN_SPRITE optimization strategy
+               if ((sprites.size() > 16) && (optType != OptimizationType.MIN_SPRITE))
+                  sprites = SpriteCutter.getSlowOptimizedSpriteList(frameImage8bpp, frameDim, iteration, OptimizationType.MIN_SPRITE);
          }
-      } else {
-         int iteration = optLevel == OptimizationLevel.SLOW ? 500000 : 5000000;
-         sprites = SpriteCutter.getSlowOptimizedSpriteList(frameImage8bpp, frameDim, (long)iteration, optType);
-         if (sprites.size() > 16 && optType != OptimizationType.MIN_SPRITE) {
-            sprites = SpriteCutter.getSlowOptimizedSpriteList(frameImage8bpp, frameDim, (long)iteration, OptimizationType.MIN_SPRITE);
+         else
+         {
+               final boolean optBetter = optLevel == OptimizationLevel.MEDIUM;
+
+               // always start with the fast optimization first
+               sprites = SpriteCutter.getFastOptimizedSpriteList(frameImage8bpp, frameDim, optType, optBetter);
+
+               // too many sprites used for this sprite ? try MIN_SPRITE opt strategy
+               if ((sprites.size() > 16) && (optType != OptimizationType.MIN_SPRITE))
+                  sprites = SpriteCutter.getFastOptimizedSpriteList(frameImage8bpp, frameDim, OptimizationType.MIN_SPRITE, optBetter);
+
+               // still too many sprites used for this sprite ? try MIN_SPRITE with optBetter option
+               if ((sprites.size() > 16) && !optBetter)
+                  sprites = SpriteCutter.getFastOptimizedSpriteList(frameImage8bpp, frameDim, OptimizationType.MIN_SPRITE, true);
+
+               // still too many sprites used for this sprite ? try better (but slower) sprite optimization method
+               if (sprites.size() > 16)
+                  sprites = SpriteCutter.getSlowOptimizedSpriteList(frameImage8bpp, frameDim, 100000, OptimizationType.MIN_SPRITE);
          }
       }
 
-      if (sprites.size() > 16) {
-         throw new UnsupportedOperationException("Sprite frame '" + id + "' uses " + sprites.size() + " internal sprites, that is above the limit (16), try to reduce the sprite size or split it.");
-      } else {
-         if (!sprites.isEmpty() && optType == OptimizationType.NONE) {
-            empty = true;
-            byte[] var12 = frameImage8bpp;
-            int var11 = frameImage8bpp.length;
+      // still above the limit ? --> stop here :-(
+      if (sprites.size() > 16)
+         throw new UnsupportedOperationException("Sprite frame '" + id + "' uses " + sprites.size()
+                  + " internal sprites, that is above the limit (16), try to reduce the sprite size or split it.");
 
-            for(int var10 = 0; var10 < var11; ++var10) {
-               byte b = var12[var10];
-               if ((b & 15) != 0) {
+      // special case of NONE optimization type
+      if ((!sprites.isEmpty()) && (optType == OptimizationType.NONE))
+      {
+         // check if frame is empty or not
+         boolean empty = true;
+         for (byte b : frameImage8bpp)
+         {
+               if ((b & 0xF) != 0)
+               {
                   empty = false;
                   break;
                }
-            }
-
-            if (empty) {
-               sprites.clear();
-            }
          }
 
-         return sprites;
+         // empty frame ? --> clear sprite list
+         if (empty)
+               sprites.clear();
       }
+
+      return sprites;
    }
 
-   static int computeFastHashcode(byte[] frameImage8bpp, Dimension frameDim, int timer, Basics.CollisionType collision, Basics.Compression compression) {
-      return timer << 16 ^ (collision != null ? collision.hashCode() : 0) ^ Arrays.hashCode(frameImage8bpp) ^ frameDim.hashCode() ^ compression.hashCode();
+   static int computeFastHashcode(byte[] frameImage8bpp, Dimension frameDim, int timer, Basics.CollisionType collision, Basics.Compression compression)
+   {
+      return (timer << 16) ^ ((collision != null) ? collision.hashCode() : 0) ^ Arrays.hashCode(frameImage8bpp) ^ frameDim.hashCode()
+                ^ compression.hashCode();
    }
 
-   public List<SpriteCell> getSprites() {
-      List<SpriteCell> result = new ArrayList();
-      Iterator var3 = this.vdpSprites.iterator();
+   public List<SpriteCell> getSprites()
+   {
+      List<SpriteCell> result = new ArrayList<SpriteCell>();
 
-      while(var3.hasNext()) {
-         VDPSpriteCut sprite = (VDPSpriteCut)var3.next();
+      for(VDPSpriteCut sprite: vdpSprites)
          result.add(new SpriteCell(sprite.offsetX, sprite.offsetY, sprite.wt * 8, sprite.ht * 8, OptimizationType.BALANCED));
-      }
 
       return result;
    }
 
-   public int getNumSprite() {
-      return this.isEmpty() ? 0 : this.vdpSprites.size();
+   public int getNumSprite()
+   {
+      return isEmpty() ? 0 : vdpSprites.size();
    }
 
-   public boolean isEmpty() {
-      return this.tileset.isEmpty();
+   public boolean isEmpty()
+   {
+      return tileset.isEmpty();
    }
 
-   public boolean isOptimisable() {
-      if (this.vdpSprites.size() == 1) {
-         VDPSpriteCut vdpSprite = (VDPSpriteCut)this.vdpSprites.get(0);
-         return vdpSprite.wt * 8 == this.frameDim.width && vdpSprite.ht * 8 == this.frameDim.height && vdpSprite.offsetX == 0 && vdpSprite.offsetY == 0;
-      } else {
-         return false;
+   public boolean isOptimisable()
+   {
+      if (vdpSprites.size() == 1)
+      {
+          final VDPSpriteCut vdpSprite = vdpSprites.get(0);
+            return ((vdpSprite.wt * 8) == frameDim.width) && ((vdpSprite.ht * 8) == frameDim.height) && (vdpSprite.offsetX == 0) && (vdpSprite.offsetY == 0);
+        }
+
+      return false;
+   }
+
+   public int getNumTile()
+   {
+      return isEmpty() ? 0 : tileset.getNumTile();
+   }
+
+   @Override
+   public int internalHashCode()
+   {
+      return hc;
+   }
+
+   public boolean internalEquals(Object obj)
+   {
+      if (obj instanceof SpriteCutFrame)
+      {
+         final SpriteCutFrame spriteFrame = (SpriteCutFrame)obj;
+         return (timer == spriteFrame.timer) && tileset.equals(spriteFrame.tileset) && vdpSprites.equals(spriteFrame.vdpSprites)
+                  && ((collision == spriteFrame.collision) || ((collision != null) && collision.equals(spriteFrame.collision)));
       }
+
+      return false;
    }
 
-   public int getNumTile() {
-      return this.isEmpty() ? 0 : this.tileset.getNumTile();
+   @Override
+   public List<Bin> getInternalBinResources()
+   {
+      return new ArrayList<>();
    }
 
-   public int internalHashCode() {
-      return this.hc;
+    @Override
+    public String toString()
+    {
+        return id + ": numTile=" + getNumTile() + " numSprite=" + getNumSprite();
    }
 
-   public boolean internalEquals(Object obj) {
-      if (!(obj instanceof SpriteCutFrame)) {
-         return false;
-      } else {
-         SpriteCutFrame spriteFrame = (SpriteCutFrame)obj;
-         return this.timer == spriteFrame.timer && this.tileset.equals(spriteFrame.tileset) && this.vdpSprites.equals(spriteFrame.vdpSprites) && (this.collision == spriteFrame.collision || this.collision != null && this.collision.equals(spriteFrame.collision));
-      }
+    @Override
+    public int shallowSize()
+    {
+        return (vdpSprites.size() * 6) + 1 + 1 + 4 + 4;
    }
 
-   public List<Bin> getInternalBinResources() {
-      return new ArrayList();
+    @Override
+    public int totalSize()
+    {
+        if (isEmpty())
+            return shallowSize();
+
+        return tileset.totalSize() + ((collision != null) ? collision.totalSize() : 0) + shallowSize();
    }
 
-   public String toString() {
-      return this.id + ": numTile=" + this.getNumTile() + " numSprite=" + this.getNumSprite();
-   }
-
-   public int shallowSize() {
-      return this.vdpSprites.size() * 6 + 1 + 1 + 4 + 4;
-   }
-
-   public int totalSize() {
-      return this.isEmpty() ? this.shallowSize() : this.tileset.totalSize() + (this.collision != null ? this.collision.totalSize() : 0) + this.shallowSize();
-   }
-
-   public void out(ByteArrayOutputStream outB, StringBuilder outS, StringBuilder outH) throws IOException {
+    @Override
+    public void out(ByteArrayOutputStream outB, StringBuilder outS, StringBuilder outH) throws IOException
+    {
+        // can't store pointer so we just reset binary stream here (used for compression only)
       outB.reset();
-      Util.decl(outS, outH, "AnimationFrame", this.id, 2, this.global);
-      int numSprite = this.isOptimisable() ? 129 : this.getNumSprite();
-      outS.append("    dc.w    " + (numSprite << 8 & '\uff00' | this.timer << 0 & 255) + "\n");
-      outS.append("    dc.l    " + this.tileset.id + "\n");
-      if (this.collision == null) {
-         outS.append("    dc.l    0\n");
-      } else {
-         outS.append("    dc.l    " + this.collision.id + "\n");
-      }
 
-      Iterator var6 = this.vdpSprites.iterator();
+        // AnimationFrame structure
+        Util.decl(outS, outH, "AnimationFrame", id, 2, global);
+        // number of sprite / timer info
+        int numSprite = isOptimisable() ? 0x81 : getNumSprite();
+        outS.append("    dc.w    " + (((numSprite << 8) & 0xFF00) | ((timer << 0) & 0xFF)) + "\n");
+      // set tileset pointer
+      outS.append("    dc.l    " + tileset.id + "\n");
+      // set collision pointer
+      if (collision == null)
+         outS.append("    dc.l    " + 0 + "\n");
+      else
+         outS.append("    dc.l    " + collision.id + "\n");
 
-      while(var6.hasNext()) {
-         VDPSpriteCut sprite = (VDPSpriteCut)var6.next();
+      // array of VDPSprite
+      for (VDPSpriteCut sprite : vdpSprites)
          sprite.internalOutS(outS);
-      }
 
       outS.append("\n");
    }

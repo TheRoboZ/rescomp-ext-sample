@@ -1,5 +1,8 @@
 package com.theroboz.rescomp;
 
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -8,11 +11,15 @@ import java.util.List;
 import sgdk.rescomp.Resource;
 import sgdk.rescomp.resource.Bin;
 import sgdk.rescomp.resource.Palette;
-
+import sgdk.rescomp.resource.internal.SpriteFrame;
+import sgdk.rescomp.resource.internal.VDPSprite;
 import sgdk.rescomp.tool.Util;
 import sgdk.rescomp.type.Basics.CollisionType;
 import sgdk.rescomp.type.Basics.Compression;
+import sgdk.rescomp.type.SpriteCell.OptimizationLevel;
+import sgdk.rescomp.type.SpriteCell.OptimizationType;
 import sgdk.tool.ArrayMath;
+import sgdk.tool.FileUtil;
 import sgdk.tool.ImageUtil;
 import sgdk.tool.ImageUtil.BasicImageInfo;
 
@@ -27,16 +34,20 @@ public class SpriteCut extends Resource
     final int hc;
 
     public final Palette palette;
-    public SpriteCut(String id, String imgFile, String spritesDefFile, int wf, int hf, Compression compression, int[][] time, CollisionType collision, boolean optDuplicate) throws Exception
+
+    public SpriteCut(String id, String imgFile, int wf, int hf, Compression compression, int[][] time, CollisionType collision, OptimizationType optType,
+            OptimizationLevel optLevel, boolean showCut, boolean optDuplicate, String spritesDefFile) throws Exception
     {
         super(id);
 
+        // init
         maxNumTile = 0;
         maxNumSprite = 0;
         animations = new ArrayList<>();
 
+        // frame size over limit (we need VDP sprite offset to fit into u8 type)
         if ((wf >= 32) || (hf >= 32))
-            throw new IllegalArgumentException("SPRITE_FILE '" + id + "' has frame width or height >= 32 tiles (not supported)");
+            throw new IllegalArgumentException("SPRITE_CUT '" + id + "' has frame width or frame height >= 32 tiles (not supported)");
 
         // set frame size
         this.wf = wf;
@@ -54,7 +65,7 @@ public class SpriteCut extends Resource
         final int maxIndex = ArrayMath.max(image, false);
         if (maxIndex >= 64)
             throw new IllegalArgumentException("'" + imgFile
-                    + "' uses color index >= 64, SPRITE_FILE resource requires image with a maximum of 64 colors, use 4bpp indexed colors image instead if you are unsure.");
+                    + "' uses color index >= 64, SPRITE_CUT resource requires image with a maximum of 64 colors, use 4bpp indexed colors image instead if you are unsure.");
 
         // retrieve basic infos about the image
         final BasicImageInfo imgInfo = ImageUtil.getBasicInfo(imgFile);
@@ -71,7 +82,7 @@ public class SpriteCut extends Resource
         catch (IllegalArgumentException e)
         {
             throw new IllegalArgumentException(
-                    "'" + imgFile + "' SPRITE_FILE resource use more than 1 palette (16 colors), use 4bpp indexed colors image instead if you are unsure.", e);
+                    "'" + imgFile + "' SPRITE_CUT resource use more than 1 palette (16 colors), use 4bpp indexed colors image instead if you are unsure.", e);
         }
         // get size in tile
         final int wt = w / 8;
@@ -86,21 +97,43 @@ public class SpriteCut extends Resource
         // build PALETTE
         palette = (Palette) addInternalResource(new Palette(id + "_palette", imgFile, palIndex * 16, 16, true));
 
-        // Read sprite definitions from file
-        final SpriteCutReader spriteDefReader = new SpriteCutReader(spritesDefFile);
+        // for debug purpose (scale image x2 so it's easier to see bounding boxes)
+        final BufferedImage bufImg = ImageUtil.scale(ImageUtil.load(imgFile), w * 2 , h * 2, false);
+        final Graphics2D g2 = bufImg.createGraphics();
+        g2.setColor(Color.pink);
+
+        // get number of animation
         final int numAnim = ht / hf;
 
+        // Read sprite definitions from file
+        final SpriteCutReader spriteDefReader = new SpriteCutReader(spritesDefFile);
 
+        int yOff = 0;
         for (int i = 0; i < numAnim; i++)
         {
             // build sprite animation
-            SpriteCutAnimation animation = new SpriteCutAnimation(id + "_animation" + i, image, wt, ht, i, wf, hf, time[Math.min(time.length - 1, i)], collision, compression, spriteDefReader.getAnimationFrameDefinitions(i), optDuplicate);
+            SpriteCutAnimation animation = new SpriteCutAnimation(id + "_animation" + i, image, wt, ht, i, wf, hf, time[Math.min(time.length - 1, i)], collision, compression, optType, optLevel, optDuplicate, spriteDefReader.getAnimationFrameDefinitions(i));
 
             // check if empty
             if (!animation.isEmpty())
             {
                 // add as internal resource (get duplicate if exist)
                 animation = (SpriteCutAnimation) addInternalResource(animation);
+
+                if (showCut)
+                {
+                    int xOff = 0;
+                    // add 32 pixels margin for RGB image (contains palette data in row 0-31)
+                    int yMargin = (imgInfo.bpp > 8) ? 32 : 0;
+                    for (SpriteCutFrame frame : animation.frames)
+                    {
+                        for (VDPSpriteCut spr : frame.vdpSprites)
+                            g2.drawRect((xOff + spr.offsetX) * 2, (yMargin + yOff + spr.offsetY) * 2, ((spr.wt * 8) * 2) - 1, ((spr.ht * 8) * 2) - 1);
+
+                        // for debug purpose
+                        xOff += wf * 8;
+                    }
+                }
 
                 // update maximum number of tile and sprite
                 maxNumTile = Math.max(maxNumTile, animation.getMaxNumTile());
@@ -109,10 +142,16 @@ public class SpriteCut extends Resource
                 // add animation
                 animations.add(animation);
             }
+
+            // for debug purpose
+            yOff += hf * 8;
         }
 
-        if (animations.isEmpty())
-            throw new IllegalArgumentException("SPRITE_FILE '" + id + "' has no valid animations");
+        g2.dispose();
+
+        // for debug purpose
+        if (showCut)
+            ImageUtil.save(bufImg, "png", FileUtil.setExtension(imgFile, "") + "_opt.png");
 
         // compute hash code
         hc = (wf << 0) ^ (hf << 8) ^ (maxNumTile << 16) ^ (maxNumSprite << 24) ^ animations.hashCode() ^ palette.hashCode();

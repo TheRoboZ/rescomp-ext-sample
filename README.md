@@ -20,14 +20,11 @@ FRAME 1
 # RESCOMP EXTENSION USAGE:
 copy rescomp_ext.jar in your \res root folder
 
-
     SPRITE_CUT xeno_spr  "xeno.png" "sprite_cuts.txt" 8 8 NONE  4 NONE
 
-    SPRITE_FILE name \"file\" \"sprites_def\" width height [compression [collision]]
+    SPRITE_FILE name width height [compression [time [collision [opt_type [opt_level [opt_duplicate [\"file\"]]]]]]]
 
     name          Sprite variable name
-
-    file          the image file to convert to SpriteDefinition structure (BMP or PNG image)
 
     sprites_def   file containing sprite definitions per animation and frame
 
@@ -54,4 +51,6 @@ copy rescomp_ext.jar in your \res root folder
                     FALSE     = no optimization (default)
                                 Note that duplicated frames pixel data are still removed by rescomp binary blob optimizer
                     TRUE      = only the first instance of consecutive duplicated frames is kept and 'timer' value is increased to compensate the removed frames time.
-                                Note that it *does* change the 'animation.numFrame' information so beware of that when enabling this optimization.
+                    Note that it *does* change the 'animation.numFrame' information so beware of that when enabling this optimization.
+
+    file          the image file to convert to SpriteDefinition structure (BMP or PNG image)
