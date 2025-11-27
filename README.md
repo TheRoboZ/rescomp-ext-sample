@@ -11,16 +11,25 @@ A processor that reads .png sprite sheets and a complementary "sprites slices de
 
 ## sprites_def formats
 ### Text (.txt)
+```
   - Format:
     [ANIMATION n]
     FRAME m
     x y width height
     ...
+
   - Example:
     [ANIMATION 0]
     FRAME 0
     0 0 32 32
     32 0 64 32
+    FRAME 1
+    0 0 31 31
+    32 32 63 63
+    # FRAME 2 - missing! BUT it will be processed automatically with DEFAULT SGDK SETTINGS
+
+    # Animation 1 - missing! BUT it will be processed automatically with DEFAULT SGDK SETTINGS
+```
 
 ### Indexed PNG (.png)
   - The processor uses IndexedOutlineDetector.detect(file) to find outlined rectangles in an indexed-color PNG.
@@ -33,8 +42,8 @@ A processor that reads .png sprite sheets and a complementary "sprites slices de
 - Use .png defs only with transparent, indexed-color PNGs (the outline detector expects IndexColorModel).
 - Frame tile size (width/height) must be > 0 and < 32 (tile counts).
 - When using .txt rectangles, allowed region sizes are multiples of 8 (8, 16, 24, 32 in pixels as enforced by the parser).
-### - If there are invalid rectangles, the processor will cut based on full frames using sgdk default SPRITE cutting.
-### - If sprites_def is omitted, the processor will cut based on full frames using sgdk default SPRITE cutting.
+#### - If there are invalid rectangles, the processor will cut based on full frames using sgdk default SPRITE cutting.
+#### - If sprites_def is omitted, the processor will cut based on full frames using sgdk default SPRITE cutting.
 
 ### Quick usage:
 
@@ -93,23 +102,7 @@ Examples
 
 
 
-# sprites_def example with manually typed cutting regions
 
-```
-# Animation 0 - first xeno
-[ANIMATION 0]
-FRAME 0
-0 0 31 31
-32 32 63 63
-FRAME 1
-0 0 31 31
-32 32 63 63
-# FRAME 2 - missing! BUT it will be processed automatically with DEFAULT SGDK SETTINGS
-
-# Animation 1 - missing! BUT it will be processed automatically with DEFAULT SGDK SETTINGS
-```
-
-# end of sprites_def
 
 
 # RESCOMP EXTENSION USAGE:
