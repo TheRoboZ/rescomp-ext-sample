@@ -11,8 +11,7 @@ import java.util.List;
 import sgdk.rescomp.Resource;
 import sgdk.rescomp.resource.Bin;
 import sgdk.rescomp.resource.Palette;
-import sgdk.rescomp.resource.internal.SpriteFrame;
-import sgdk.rescomp.resource.internal.VDPSprite;
+
 import sgdk.rescomp.tool.Util;
 import sgdk.rescomp.type.Basics.CollisionType;
 import sgdk.rescomp.type.Basics.Compression;
@@ -106,7 +105,7 @@ public class SpriteCut extends Resource
         final int numAnim = ht / hf;
 
         // Read sprite definitions from file
-        final SpriteCutReader spriteDefReader = new SpriteCutReader(spritesDefFile);
+        final SpriteCutReader spriteDefReader = new SpriteCutReader(spritesDefFile, w, h);
 
         int yOff = 0;
         for (int i = 0; i < numAnim; i++)

@@ -6,7 +6,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Iterator;
+
 import java.util.List;
 
 import sgdk.rescomp.Resource;
@@ -16,7 +16,7 @@ import sgdk.rescomp.tool.SpriteCutter;
 import sgdk.rescomp.tool.Util;
 import sgdk.rescomp.type.Basics;
 import sgdk.rescomp.resource.internal.Collision;
-import sgdk.rescomp.resource.internal.VDPSprite;
+
 import sgdk.rescomp.type.Basics.CollisionType;
 import sgdk.rescomp.type.SpriteCell;
 import sgdk.rescomp.type.SpriteCell.OptimizationLevel;

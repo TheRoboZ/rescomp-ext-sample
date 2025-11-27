@@ -38,18 +38,26 @@ public class SpriteCutReader
      * 0 32 32 32
      * 32 32 32 32
      */
-    public SpriteCutReader(String filePath) throws IOException
+    public SpriteCutReader(String filePath, int W, int H) throws IOException
     {
         this.file = new File(filePath);
         this.animationDefinitions = new HashMap<>();
 
-        parseFile();
+        // Only parse if the source file has a .txt extension (case-insensitive)
+        final String name = this.file.getName();
+        if (name != null)
+        {
+            if(name.toLowerCase().endsWith(".txt"))
+                parseTextFile();
+            else if (name.toLowerCase().endsWith(".png"))
+              parsePNGFile(W, H);
+        }
     }
 
-    private void parseFile() throws IOException
+    private void parseTextFile() throws IOException
     {
         if (!file.exists())
-            throw new IOException("Sprite definition file not found: " + file.getAbsolutePath());
+            throw new IOException("CUTS definition file not found: " + file.getAbsolutePath());
 
         try (BufferedReader reader = new BufferedReader(new FileReader(file)))
         {
@@ -113,6 +121,49 @@ public class SpriteCutReader
             // Save last frame
             if (currentAnimation >= 0 && currentFrame >= 0)
                 saveFrameDefinition(currentAnimation, currentFrame, new SpriteFrameDefinition(currentCells));
+        }
+    }
+
+    private void parsePNGFile(int regionW, int regionH) throws IOException
+    {
+        if (!file.exists())
+            throw new IOException("CUTS definition file not found: " + file.getAbsolutePath());
+
+        final IndexedOutlineDetector.Rect[] rects = IndexedOutlineDetector.detect(file);
+
+        if (rects == null || rects.length == 0)
+            return;
+
+        // Map<animIndex, Map<frameIndex, List<SpriteCell>>>
+        final Map<Integer, Map<Integer, List<SpriteCell>>> grouped = new HashMap<>();
+
+        for (IndexedOutlineDetector.Rect r : rects)
+        {
+            // Determine animation by vertical region, frame by horizontal region
+            final int animIndex = (r.y) / regionH;
+            final int frameIndex = (r.x) / regionW;
+
+            grouped.computeIfAbsent(animIndex, k -> new HashMap<>())
+                   .computeIfAbsent(frameIndex, k -> new ArrayList<>())
+                   .add(new SpriteCell(r.x, r.y, r.width, r.height, OptimizationType.BALANCED));
+        }
+
+        // Save definitions for each animation/frame
+        for (Map.Entry<Integer, Map<Integer, List<SpriteCell>>> animEntry : grouped.entrySet())
+        {
+            final int animIndex = animEntry.getKey();
+            final Map<Integer, List<SpriteCell>> frames = animEntry.getValue();
+
+            // Ensure consistent ordering of frames when saving (not strictly required by saveFrameDefinition,
+            // but keeps output deterministic)
+            final List<Integer> frameIndices = new ArrayList<>(frames.keySet());
+            frameIndices.sort(Integer::compareTo);
+
+            for (Integer fIdx : frameIndices)
+            {
+                final List<SpriteCell> cells = frames.get(fIdx);
+                saveFrameDefinition(animIndex, fIdx, new SpriteFrameDefinition(cells));
+            }
         }
     }
 

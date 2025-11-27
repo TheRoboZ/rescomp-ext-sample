@@ -1,3 +1,5 @@
+package com.theroboz.rescomp;
+
 import javax.imageio.ImageIO;
 import java.awt.image.*;
 import java.io.File;
@@ -155,10 +157,10 @@ public final class IndexedOutlineDetector
     }
 
     // Test
-    public static void main(String[] args) throws Exception
-    {
-        Rect[] rects = detect("outlines_indexed.png");
-        System.out.println("Detected " + rects.length + " rectangles:");
-        for (Rect r : rects) System.out.println(" " + r);
-    }
+    // public static void main(String[] args) throws Exception
+    // {
+    //     Rect[] rects = detect("outlines_indexed.png");
+    //     System.out.println("Detected " + rects.length + " rectangles:");
+    //     for (Rect r : rects) System.out.println(" " + r);
+    // }
 }

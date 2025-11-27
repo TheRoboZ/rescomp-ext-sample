@@ -124,7 +124,7 @@ public class SpriteCutProcessor implements Processor
             final String spritesDefFile = FileUtil.adjustPath(Compiler.resDir, fields[11]);
             // add resource file (used for deps generation)
             String extension = FileUtil.getFileExtension(spritesDefFile, true);
-            if (StringUtil.equals(extension,".txt"))
+            if (StringUtil.equals(extension,".txt") || StringUtil.equals(extension,".png"))
             {
                 Compiler.addResourceFile(spritesDefFile);
                 return new SpriteCut(id, fileIn, wf, hf, compression, time, collision, opt, optLevel, showCut, optDuplicate, spritesDefFile);
@@ -132,7 +132,7 @@ public class SpriteCutProcessor implements Processor
             else
             {
                 System.out.println("Wrong SPRITE_CUT definition");
-                System.out.println("CUTS definition file '"+spritesDefFile+"' must be a text file! but is of type "+extension);
+                System.out.println("CUTS definition file '"+spritesDefFile+"' must be a text or PNG file! but is of type "+extension);
                 return null;
             }
         }
